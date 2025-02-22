@@ -28,9 +28,8 @@ def plot_acf_pacf(data,lags,plot_type):
 
 
 #Rolling Forecast
-def rolling_forecast(df: pd.DataFrame, train_len: int, horizon: int, window: int, method: str) -> list:
-    from statsmodels.tsa.statespace.sarimax import SARIMAX
-        total_len = train_len + horizon
+def rolling_forecast(df: pd.DataFrame, train_len: int, horizon: int, window: int, method: str,p:int,d:int,q:int) -> list:
+    total_len = train_len + horizon
     
     if method == 'mean':
         pred_mean = []
@@ -38,8 +37,8 @@ def rolling_forecast(df: pd.DataFrame, train_len: int, horizon: int, window: int
         for i in range(train_len, total_len, window):
             mean = np.mean(df[:i].values)
             pred_mean.extend(mean for _ in range(window))
-
-        return pred_mean
+        
+        return pred_mean[:horizon]  # Trim to match test length
 
     elif method == 'last':
         pred_last_value = []
@@ -47,20 +46,20 @@ def rolling_forecast(df: pd.DataFrame, train_len: int, horizon: int, window: int
         for i in range(train_len, total_len, window):
             last_value = df[:i].iloc[-1].values[0]
             pred_last_value.extend(last_value for _ in range(window))
-            
-        return pred_last_value
+        
+        return pred_last_value[:horizon]  # Trim to match test length
     
     elif method == 'MA':
         pred_MA = []
         
         for i in range(train_len, total_len, window):
-            model = SARIMAX(df[:i], order=(0,0,2))
+            model = SARIMAX(df[:i], order=(p, d, q))
             res = model.fit(disp=False)
             predictions = res.get_prediction(0, i + window - 1)
             oos_pred = predictions.predicted_mean.iloc[-window:]
             pred_MA.extend(oos_pred)
-            
-        return pred_MA
+        
+        return pred_MA[:horizon]  # Trim to match test length
 
 #Optimize_ARMA
 def optimize_ARIMA(endog: Union[pd.Series, list], order_list: list, d: int) -> pd.DataFrame:
@@ -112,8 +111,7 @@ def optimize_SARIMA(endog: Union[pd.Series, list], order_list: list, d: int, D: 
 
 
 def print_SARIMAX_results(data,order:tuple):
-    from statsmodels.tsa.statespace.sarimax import SARIMAX
-    model = SARIMAX(data, order=(2,0,2), simple_differencing=False)
+    model = SARIMAX(data, order=order, simple_differencing=False)
     model_fit = model.fit(disp=False)
     print(model_fit.summary())
 
