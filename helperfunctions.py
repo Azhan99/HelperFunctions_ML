@@ -1,6 +1,17 @@
 ###############################
-
-
+import numpy as np
+import pandas as pd
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
+from statsmodels.stats.diagnostic import acorr_ljungbox
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.arima_process import ArmaProcess
+from statsmodels.graphics.gofplots import qqplot
+from statsmodels.tsa.stattools import adfuller,grangercausalitytests
+from tqdm import tqdm
+from typing import Union
+import matplotlib.pyplot as plt
+from itertools import product
 
 #ADF test
 def adf_test(randomwalk):
@@ -14,16 +25,11 @@ def mape(y_true, y_pred):
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 #Plotting ACF
-def plot_acf_pacf(data,lags,plot_type):
-    from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
-    import matplotlib.pyplot as plt
-    
-    if plot_type='acf':
-        plot_acf(data, lags=lags)
-        plt.tight_layout()
-    else:
-        plot_pacf(data, lags=lags)
-        plt.tight_layout()
+def plot_acf_pacf(data,lags):
+    plot_acf(data, lags=lags)
+    plt.tight_layout()
+    plot_pacf(data, lags=lags)
+    plt.tight_layout()
 
 
 #Rolling Forecast
@@ -65,7 +71,7 @@ def optimize_arima(endog: Union[pd.Series, list], order_list: list, d: int) -> p
     
     results = []
     
-    for order in tqdm_notebook(order_list):
+    for order in tqdm(order_list):
         try: 
             model = SARIMAX(endog, order=(order[0], d, order[1]), simple_differencing=False).fit(disp=False)
         except:
@@ -87,7 +93,7 @@ def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: 
     
     results = []
     
-    for order in tqdm_notebook(order_list):
+    for order in tqdm(order_list):
         try: 
             model = SARIMAX(
                 endog, 
@@ -192,7 +198,7 @@ def optimize_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list]
     
     results = []
     
-    for order in tqdm_notebook(order_list):
+    for order in tqdm(order_list):
         try: 
             model = SARIMAX(
                 endog,
@@ -240,7 +246,6 @@ def recursive_forecast_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Ser
             pred_SARIMAX.extend(oos_pred)
             
         return pred_SARIMAX
-
 
 
 
