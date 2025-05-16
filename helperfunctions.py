@@ -134,6 +134,72 @@ def optimize_SARIMA(endog: Union[pd.Series, list], order_list: list, d: int, D: 
     return result_df
 
 
+##Best Combination
+def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s=None):
+    """
+    Finds the best (p, q) or (p, q, P, Q) combination based on lowest MAPE.
+    
+    Parameters:
+        model_type (str): 'ARIMA' or 'SARIMA'
+        combo_df (pd.DataFrame): DataFrame with column ['(p,q,P,Q)' or '(p,q)'] as tuples
+        train (array-like or pd.Series): Training data
+        test (array-like or pd.Series): Test data (actual values)
+        d (int): Non-seasonal differencing order
+        start (int or datetime): Start index for prediction
+        end (int or datetime): End index for prediction
+        D (int or None): Seasonal differencing order (for SARIMA only)
+        s (int or None): Seasonal period (for SARIMA only)
+
+    Returns:
+        dict: Best combination and corresponding MAPE
+    """
+    lowest_mape = float('inf')
+    best_combo = None
+
+    # Validate model type
+    if model_type not in ['ARIMA', 'SARIMA']:
+        raise ValueError("model_type must be 'ARIMA' or 'SARIMA'")
+
+    for index, row in combo_df.iterrows():
+        # Extract parameters based on model type
+        if model_type == 'ARIMA':
+            p, q = row['(p,q)']
+            P, Q = 0, 0  # No seasonal part
+        else:
+            p, q, P, Q = row['(p,q,P,Q)']
+
+        try:
+            # Fit the appropriate model
+            if model_type == 'ARIMA':
+                model = SARIMAX(train, order=(p, d, q))
+            else:
+                if D is None or s is None:
+                    raise ValueError("For SARIMA, 'D' and 's' must be provided.")
+                model = SARIMAX(train, order=(p, d, q), seasonal_order=(P, D, Q, s))
+
+            model_fit = model.fit(disp=False)
+
+            # Get predictions
+            pred = model_fit.get_prediction(start=start, end=end).predicted_mean
+
+            # Calculate MAPE
+            current_mape = mape(test, pred)
+
+            # Update best combo if better
+            if current_mape < lowest_mape:
+                lowest_mape = current_mape
+                best_combo = (p, q, P, Q) if model_type == 'SARIMA' else (p, q)
+
+        except Exception as e:
+            print(f"Error fitting model with {row['(p,q,P,Q)' if model_type == 'SARIMA' else '(p,q)']}: {e}")
+            continue
+
+    return {
+        'Best Combination': best_combo,
+        'Lowest MAPE': lowest_mape
+    }
+
+
 def print_SARIMAX_results(data,order:tuple):
     model = SARIMAX(data, order=order, simple_differencing=False)
     model_fit = model.fit(disp=False)
