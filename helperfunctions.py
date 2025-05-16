@@ -199,6 +199,32 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
         'Lowest MAPE': lowest_mape
     }
 
+##SARIMAX function
+def optimize_SARIMAX(endog: Union[pd.Series, list], exog: Union[pd.Series, list], order_list: list, d: int, D: int, s: int) -> pd.DataFrame:
+    
+    results = []
+    
+    for order in tqdm_notebook(order_list):
+        try: 
+            model = SARIMAX(
+                endog,
+                exog,
+                order=(order[0], d, order[1]),
+                seasonal_order=(order[2], D, order[3], s),
+                simple_differencing=False).fit(disp=False)
+        except:
+            continue
+            
+        aic = model.aic
+        results.append([order, aic])
+        
+    result_df = pd.DataFrame(results)
+    result_df.columns = ['(p,q,P,Q)', 'AIC']
+    
+    #Sort in ascending order, lower AIC is better
+    result_df = result_df.sort_values(by='AIC', ascending=True).reset_index(drop=True)
+    
+    return result_df
 
 def print_SARIMAX_results(data,order:tuple):
     model = SARIMAX(data, order=order, simple_differencing=False)
