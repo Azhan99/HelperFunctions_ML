@@ -86,7 +86,7 @@ def rolling_forecast(df: pd.DataFrame, train_len: int, horizon: int, window: int
         return pred_MA[:horizon]  # Trim to match test length
 
 #Optimize_ARMA
-def optimize_ARIMA(endog: Union[pd.Series, list], order_list: list, d: int) -> pd.DataFrame:
+def optimize_arima(endog: Union[pd.Series, list], order_list: list, d: int) -> pd.DataFrame:
     
     results = []
     
@@ -108,7 +108,7 @@ def optimize_ARIMA(endog: Union[pd.Series, list], order_list: list, d: int) -> p
     return result_df
 
 #Optimize_SARIMA
-def optimize_SARIMA(endog: Union[pd.Series, list], order_list: list, d: int, D: int, s: int) -> pd.DataFrame:
+def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: int, s: int) -> pd.DataFrame:
     
     results = []
     
@@ -199,8 +199,21 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
         'Lowest MAPE': lowest_mape
     }
 
+
+
+def print_sarima_results(data,order:tuple):
+    model = SARIMAX(data, order=order, simple_differencing=False)
+    model_fit = model.fit(disp=False)
+    print(model_fit.summary())
+
+def Lljunbox(model):
+    residuals = model.resid
+    lbvalue, pvalue = acorr_ljungbox(residuals, np.arange(1, 11, 1))
+    print(pvalue)
+
+
 ##SARIMAX function
-def optimize_SARIMAX(endog: Union[pd.Series, list], exog: Union[pd.Series, list], order_list: list, d: int, D: int, s: int) -> pd.DataFrame:
+def optimize_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list], order_list: list, d: int, D: int, s: int) -> pd.DataFrame:
     
     results = []
     
@@ -226,18 +239,9 @@ def optimize_SARIMAX(endog: Union[pd.Series, list], exog: Union[pd.Series, list]
     
     return result_df
 
-def print_SARIMAX_results(data,order:tuple):
-    model = SARIMAX(data, order=order, simple_differencing=False)
-    model_fit = model.fit(disp=False)
-    print(model_fit.summary())
-
-def Lljunbox(model):
-    residuals = model.resid
-    lbvalue, pvalue = acorr_ljungbox(residuals, np.arange(1, 11, 1))
-    print(pvalue)
 
 
-def recursive_forecast(endog: Union[pd.Series, list], exog: Union[pd.Series, list], train_len: int, horizon: int, window: int, method: str) -> list:
+def recursive_forecast_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list], train_len: int, horizon: int, window: int, method: str) -> list:
     
     total_len = train_len + horizon
 
