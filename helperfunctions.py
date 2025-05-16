@@ -4,7 +4,6 @@
 
 #ADF test
 def adf_test(randomwalk):
-    from statsmodels.tsa.stattools import adfuller
     ADF_result = adfuller(random_walk)
     print(f'ADF Statistic: {ADF_result[0]}')
     print(f'p-value: {ADF_result[1]}')
