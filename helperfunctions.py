@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from itertools import product
 
 #ADF test
-def adf_test(randomwalk):
+def adf_test(random_walk):
     ADF_result = adfuller(random_walk)
     print(f'ADF Statistic: {ADF_result[0]}')
     print(f'p-value: {ADF_result[1]}')
