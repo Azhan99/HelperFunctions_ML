@@ -13,6 +13,7 @@ from typing import Union
 import matplotlib.pyplot as plt
 from itertools import product
 
+
 #ADF test
 def adf_test(random_walk):
     ADF_result = adfuller(random_walk)
@@ -222,7 +223,7 @@ def optimize_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list]
 
 
 
-def recursive_forecast_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list], train_len: int, horizon: int, window: int, method: str) -> list:
+def recursive_forecast_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Series, list], train_len: int, horizon: int, window: int, method: str,p:int,d:int,q:int,P:int,D:int,Q:int,m:int) -> list:
     
     total_len = train_len + horizon
 
@@ -239,13 +240,102 @@ def recursive_forecast_sarimax(endog: Union[pd.Series, list], exog: Union[pd.Ser
         pred_SARIMAX = []
         
         for i in range(train_len, total_len, window):
-            model = SARIMAX(endog[:i], exog[:i], order=(3,1,3), seasonal_order=(0,0,0,4), simple_differencing=False)
+            model = SARIMAX(endog[:i], exog[:i], order=(p,d,q), seasonal_order=(P,D,Q,m), simple_differencing=False)
             res = model.fit(disp=False)
             predictions = res.get_prediction(exog=exog)
             oos_pred = predictions.predicted_mean.iloc[-window:]
             pred_SARIMAX.extend(oos_pred)
             
         return pred_SARIMAX
+
+
+
+
+def optimize_var(endog: Union[pd.Series, list]) -> pd.DataFrame:
+    
+    results = []
+    
+    for i in tqdm(range(15)):
+        try:
+            model = VARMAX(endog, order=(i, 0)).fit(dips=False)
+        except:
+            continue
+            
+        aic = model.aic
+        results.append([i, aic])
+        
+    result_df = pd.DataFrame(results)
+    result_df.columns = ['p', 'AIC']
+    
+    result_df = result_df.sort_values(by='AIC', ascending=True).reset_index(drop=True)
+    
+    return result_df
+
+
+
+def granger_casualty_test(first_val: str, second_val: str, data: pd.DataFrame, d: int, lag: list):
+    """
+    Tests Granger Causality between two variables in both directions.
+    
+    Parameters:
+        first_val (str): Name of first column
+        second_val (str): Name of second column
+        data (pd.DataFrame): DataFrame with both columns
+        d (int): Number of differences to apply (e.g., 1)
+        lag (list): List of lags to test (e.g., [2])
+    """
+    # Subset data and difference
+    data_subset = data[[first_val, second_val]]
+    data_diffed = data_subset.diff()[d:].dropna()  # Remove NaNs after differencing
+    
+    print(f"\n{first_val} Granger-causes {second_val}?")
+    print('------------------')
+    granger_1 = grangercausalitytests(data_diffed, maxlag=lag[0])
+    
+    print(f"\n{second_val} Granger-causes {first_val}?")
+    print('------------------')
+    granger_2 = grangercausalitytests(data_diffed[[second_val, first_val]], maxlag=lag[0])
+
+
+
+def rolling_forecast_var(df: pd.DataFrame, train_len: int, horizon: int, window: int,first:str,second:str) -> list:
+    
+    total_len = train_len + horizon
+    end_idx = train_len
+    
+    if method == 'VAR':
+
+        first_pred_VAR = []
+        second_pred_VAR = []
+        
+        for i in range(train_len, total_len, window):
+            model = VARMAX(df[:i], order=(3,0))
+            res = model.fit(disp=False)
+            predictions = res.get_prediction(0, i + window - 1)
+            
+            oos_pred_first = predictions.predicted_mean.iloc[-window:][first]
+            oos_pred_second = predictions.predicted_mean.iloc[-window:][second]
+            
+            realdpi_pred_VAR.extend(oos_pred_first)
+            realcons_pred_VAR.extend(oos_pred_second)
+        
+        return first_pred_VAR, second_pred_VAR
+    
+    elif method == 'last':
+        first_pred_last = []
+        second_pred_last = []
+        
+        for i in range(train_len, total_len, window):
+            
+            first_last = df[:i].iloc[-1][first]
+            second_last = df[:i].iloc[-1][second]
+            
+            first_pred_last.extend(first_last for _ in range(window))
+            second_pred_last.extend(second_last for _ in range(window))
+            
+        return frist_pred_last, second_pred_last
+
+
 
 
 
