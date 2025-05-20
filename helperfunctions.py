@@ -119,7 +119,8 @@ def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: 
 ##Best Combination
 def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s=None):
     """
-    Finds the best (p, q) or (p, q, P, Q) combination based on lowest MAPE.
+    Finds the best (p, q) or (p, q, P, Q) combination based on lowest MAPE,
+    while ensuring all Ljung-Box test p-values > 0.05 for residuals.
     
     Parameters:
         model_type (str): 'ARIMA' or 'SARIMA'
@@ -133,10 +134,11 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
         s (int or None): Seasonal period (for SARIMA only)
 
     Returns:
-        dict: Best combination and corresponding MAPE
+        dict: Best valid combination and corresponding MAPE
     """
     lowest_mape = float('inf')
     best_combo = None
+    valid_combos = []  # Store all valid combos that pass LB test
 
     # Validate model type
     if model_type not in ['ARIMA', 'SARIMA']:
@@ -161,26 +163,43 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
 
             model_fit = model.fit(disp=False)
 
-            # Get predictions
-            pred = model_fit.get_prediction(start=start, end=end).predicted_mean
+            # Check Ljung-Box test for residuals
+            residuals = model_fit.resid
+            lb_test = acorr_ljungbox(residuals, lags=np.arange(1, 11, 1), return_df=True)
+            
+            # Check if all p-values > 0.05
+            if (lb_test['lb_pvalue'] > 0.05).all():
+                # Get predictions
+                pred = model_fit.get_prediction(start=start, end=end).predicted_mean
 
-            # Calculate MAPE
-            current_mape = mape(test, pred)
-
-            # Update best combo if better
-            if current_mape < lowest_mape:
-                lowest_mape = current_mape
-                best_combo = (p, q, P, Q) if model_type == 'SARIMA' else (p, q)
+                # Calculate MAPE
+                current_mape = mape(test, pred)
+                
+                # Store all valid combos (optional, for analysis)
+                valid_combos.append({
+                    'combo': (p, q, P, Q) if model_type == 'SARIMA' else (p, q),
+                    'mape': current_mape,
+                    'lb_test': lb_test
+                })
+                
+                # Update best combo if better
+                if current_mape < lowest_mape:
+                    lowest_mape = current_mape
+                    best_combo = (p, q, P, Q) if model_type == 'SARIMA' else (p, q)
 
         except Exception as e:
             print(f"Error fitting model with {row['(p,q,P,Q)' if model_type == 'SARIMA' else '(p,q)']}: {e}")
             continue
 
+    if best_combo is None:
+        print("Warning: No combinations passed the Ljung-Box test (all p-values > 0.05)")
+        return None
+    
     return {
         'Best Combination': best_combo,
-        'Lowest MAPE': lowest_mape
+        'Lowest MAPE': lowest_mape,
+        'All Valid Combinations': valid_combos  # Optional: for further analysis
     }
-
 
 
 def print_sarima_results(data,order:tuple):
