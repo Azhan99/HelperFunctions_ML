@@ -141,8 +141,8 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
     valid_combos = []  # Store all valid combos that pass LB test
 
     # Validate model type
-    if model_type not in ['ARIMA', 'SARIMA']:
-        raise ValueError("model_type must be 'ARIMA' or 'SARIMA'")
+    if model_type not in ['ARIMA', 'SARIMA','SARIMAX']:
+        raise ValueError("model_type must be 'ARIMA' or 'SARIMA' or 'SARIMAX'")
 
     for index, row in combo_df.iterrows():
         # Extract parameters based on model type
@@ -159,7 +159,10 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
             else:
                 if D is None or s is None:
                     raise ValueError("For SARIMA, 'D' and 's' must be provided.")
-                model = SARIMAX(train, order=(p, d, q), seasonal_order=(P, D, Q, s))
+                if model=='SARIMA':
+                    model = SARIMAX(train, order=(p, d, q), seasonal_order=(P, D, Q, s),simple_differencing=False)
+                elif model=='SARIMAX':
+                    model = SARIMAX(train, test, order=(p,d,q),seasonal_order=(P,D,Q,s), simple_differencing=False)
 
             model_fit = model.fit(disp=False)
 
