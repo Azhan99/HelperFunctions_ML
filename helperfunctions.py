@@ -140,7 +140,7 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
     best_combo = None
     valid_combos = []
 
-    if model_type not in ['ARIMA', 'SARIMA']:
+    if model_type not in ['ARIMA', 'SARIMA','SARIMA','SARIMAX']:
         raise ValueError("model_type must be 'ARIMA' or 'SARIMA'")
 
     for _, row in combo_df.iterrows():
