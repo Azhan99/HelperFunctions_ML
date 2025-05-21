@@ -117,7 +117,7 @@ def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: 
 
 
 ##Best Combination
-def best_model_combo2(model_type, combo_df, train, test, d, start, end, D=None, s=None):
+def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s=None):
     """
     Finds the best (p, q) or (p, q, P, Q) combination based on lowest MAPE,
     while ensuring all Ljung-Box test p-values > 0.05 for residuals.
