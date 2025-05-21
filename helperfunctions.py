@@ -117,7 +117,7 @@ def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: 
 
 
 ##Best Combination
-def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s=None):
+def best_model_combo2(model_type, combo_df, train, test, d, start, end, D=None, s=None):
     """
     Finds the best (p, q) or (p, q, P, Q) combination based on lowest MAPE,
     while ensuring all Ljung-Box test p-values > 0.05 for residuals.
@@ -138,70 +138,69 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
     """
     lowest_mape = float('inf')
     best_combo = None
-    valid_combos = []  # Store all valid combos that pass LB test
+    valid_combos = []
 
-    # Validate model type
-    if model_type not in ['ARIMA', 'SARIMA','SARIMAX']:
-        raise ValueError("model_type must be 'ARIMA' or 'SARIMA' or 'SARIMAX'")
+    if model_type not in ['ARIMA', 'SARIMA']:
+        raise ValueError("model_type must be 'ARIMA' or 'SARIMA'")
 
-    for index, row in combo_df.iterrows():
-        # Extract parameters based on model type
-        if model_type == 'ARIMA':
-            p, q = row['(p,q)']
-            P, Q = 0, 0  # No seasonal part
-        else:
-            p, q, P, Q = row['(p,q,P,Q)']
-
+    for _, row in combo_df.iterrows():
         try:
-            # Fit the appropriate model
+            # Extract parameters based on model type
             if model_type == 'ARIMA':
-                model = SARIMAX(train, order=(p, d, q))
+                p, q = row['(p,q)']
+                P, Q = 0, 0
+                seasonal_order = (0, 0, 0, 1)  # No seasonal component
             else:
+                p, q, P, Q = row['(p,q,P,Q)']
                 if D is None or s is None:
                     raise ValueError("For SARIMA, 'D' and 's' must be provided.")
-                if model=='SARIMA':
-                    model = SARIMAX(train, order=(p, d, q), seasonal_order=(P, D, Q, s),simple_differencing=False)
-                elif model=='SARIMAX':
-                    model = SARIMAX(train, test, order=(p,d,q),seasonal_order=(P,D,Q,s), simple_differencing=False)
+                seasonal_order = (P, D, Q, s)
+
+            # Build model
+            model = SARIMAX(train,
+                            order=(p, d, q),
+                            seasonal_order=seasonal_order,
+                            simple_differencing=False,
+                            enforce_stationarity=False,
+                            enforce_invertibility=False)
 
             model_fit = model.fit(disp=False)
 
-            # Check Ljung-Box test for residuals
+            # Check residuals using Ljung-Box test
             residuals = model_fit.resid
             lb_test = acorr_ljungbox(residuals, lags=np.arange(1, 11, 1), return_df=True)
-            
-            # Check if all p-values > 0.05
+
+            # Ensure all p-values > 0.05
             if (lb_test['lb_pvalue'] > 0.05).all():
-                # Get predictions
+                # Make predictions
                 pred = model_fit.get_prediction(start=start, end=end).predicted_mean
 
-                # Calculate MAPE
+                # Compute MAPE
                 current_mape = mape(test, pred)
-                
-                # Store all valid combos (optional, for analysis)
+
+                # Store valid combo
                 valid_combos.append({
                     'combo': (p, q, P, Q) if model_type == 'SARIMA' else (p, q),
-                    'mape': current_mape,
-                    'lb_test': lb_test
+                    'mape': current_mape
                 })
-                
-                # Update best combo if better
+
+                # Update best combo
                 if current_mape < lowest_mape:
                     lowest_mape = current_mape
-                    best_combo = (p, q, P, Q) if model_type == 'SARIMA' else (p, q)
+                    best_combo = (p, q, P, Q)
 
         except Exception as e:
-            print(f"Error fitting model with {row['(p,q,P,Q)' if model_type == 'SARIMA' else '(p,q)']}: {e}")
+            print(f"Error fitting model {row}: {e}")
             continue
 
     if best_combo is None:
-        print("Warning: No combinations passed the Ljung-Box test (all p-values > 0.05)")
+        print("No combinations passed the Ljung-Box test (all p-values > 0.05)")
         return None
-    
+
     return {
         'Best Combination': best_combo,
         'Lowest MAPE': lowest_mape,
-        'All Valid Combinations': valid_combos  # Optional: for further analysis
+        'All Valid Combinations': sorted(valid_combos, key=lambda x: x['mape'])[:5]
     }
 
 
