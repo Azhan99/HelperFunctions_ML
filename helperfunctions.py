@@ -149,7 +149,7 @@ def best_model_combo(model_type, combo_df, train, test, d, start, end, D=None, s
             if model_type == 'ARIMA':
                 p, q = row['(p,q)']
                 P, Q = 0, 0
-                seasonal_order = (0, 0, 0, 1)  # No seasonal component
+                seasonal_order = (0, 0, 0, 0)  # No seasonal component
             else:
                 p, q, P, Q = row['(p,q,P,Q)']
                 if D is None or s is None:
