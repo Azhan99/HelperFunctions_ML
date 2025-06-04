@@ -12,6 +12,7 @@ from tqdm import tqdm
 from typing import Union
 import matplotlib.pyplot as plt
 from itertools import product
+from sklearn.metrics import mean_squared_error
 
 
 #ADF test
@@ -117,8 +118,7 @@ def optimize_sarima(endog: Union[pd.Series, list], order_list: list, d: int, D: 
 
 
 ##Best Combination
-
-def best_model_combo_v2(model_type, combo_df, train, test, d, exog_train=None, exog_test=None, D=None, s=None):
+def best_model_combo(model_type, combo_df, train, test, d, exog_train=None, exog_test=None, D=None, s=None):
     """
     Finds the best (p, q) or (p, q, P, Q) combination based on lowest RMSE,
     while ensuring all Ljung-Box test p-values > 0.05 for residuals.
@@ -137,7 +137,7 @@ def best_model_combo_v2(model_type, combo_df, train, test, d, exog_train=None, e
     Returns:
         dict: Best valid combination and corresponding RMSE
     """
-    from sklearn.metrics import mean_squared_error
+
     import numpy as np
     
     lowest_rmse = float('inf')
@@ -221,6 +221,7 @@ def best_model_combo_v2(model_type, combo_df, train, test, d, exog_train=None, e
         'Lowest RMSE': lowest_rmse,
         'Valid Combinations': valid_combos
     }
+
 
 
 def print_sarima_results(data,order:tuple):
