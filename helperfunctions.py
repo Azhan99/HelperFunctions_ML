@@ -138,8 +138,6 @@ def best_model_combo(model_type, combo_df, train, test, d, exog_train=None, exog
         dict: Best valid combination and corresponding RMSE
     """
 
-    import numpy as np
-    
     lowest_rmse = float('inf')
     best_combo = None
     valid_combos = []
